@@ -1,0 +1,11 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vote-seeder
+spec:
+  template:
+    spec:
+      containers:
+      - name: seeder
+        image: sujalkamanna/voting-seeder
+      restartPolicy: OnFailure
