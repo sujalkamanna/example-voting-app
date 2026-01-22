@@ -3,9 +3,30 @@ kind: Job
 metadata:
   name: vote-seeder
 spec:
+  # How many times Kubernetes will retry if this job fails
+  backoffLimit: 4
+  # Automatically clean up completed/failed jobs after a while (optional)
+  ttlSecondsAfterFinished: 300
+
   template:
     spec:
       containers:
       - name: seeder
-        image: sujalkamanna/voting-seeder
+        image: sujalkamanna/voting-seeder:latest
+        # (Optional) Add env vars if your seeder needs DB URLs, etc.
+        # env:
+        # - name: DB_HOST
+        #   value: "postgres-service"
+        # - name: DB_PORT
+        #   value: "5432"
+
+        # (Optional) Resource requests/limits
+        # resources:
+        #   requests:
+        #     cpu: 100m
+        #     memory: 128Mi
+        #   limits:
+        #     cpu: 500m
+        #     memory: 256Mi
+
       restartPolicy: OnFailure
