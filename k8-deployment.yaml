@@ -1,11 +1,83 @@
+# Redis Image
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vote-deployment
-  labels:
-    app: vote
+  name: redis
 spec:
-  replicas: 3
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7.2
+        ports:
+        - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+
+# Postgres Image
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:14
+        env:
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_PASSWORD
+          value: postgres
+        - name: POSTGRES_DB
+          value: postgres
+        ports:
+        - containerPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  selector:
+    app: db
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+# Vote App (Python)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote
+spec:
+  replicas: 2
   selector:
     matchLabels:
       app: vote
@@ -15,19 +87,35 @@ spec:
         app: vote
     spec:
       containers:
-      - name: vote-container
-        image: sujalkamanna/vote-ui:latest  # Replace with your Docker Hub username and image name
+      - name: vote
+        image: sujalkamanna/vote-ui:latest
         ports:
         - containerPort: 80
+        env:
+        - name: REDIS_HOST
+          value: redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vote
+spec:
+  type: NodePort
+  selector:
+    app: vote
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 31000
+
+# Result App (Node.js)
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: result-deployment
-  labels:
-    app: result
+  name: result
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: result
@@ -37,19 +125,35 @@ spec:
         app: result
     spec:
       containers:
-      - name: result-container
-        image: sujalkamanna/result-ui:latest  # Replace with your Docker Hub username and image name
+      - name: result
+        image: sujalkamanna/result-ui:latest
         ports:
         - containerPort: 80
+        env:
+        - name: POSTGRES_HOST
+          value: db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: result
+spec:
+  type: NodePort
+  selector:
+    app: result
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 31001
+
+# Worker (.NET)
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: worker-deployment
-  labels:
-    app: worker
+  name: worker
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: worker
@@ -59,42 +163,10 @@ spec:
         app: worker
     spec:
       containers:
-      - name: worker-container
-        image: sujalkamanna/worker:latest  # Replace with your Docker Hub username and image name
-        ports:
-        - containerPort: 5000
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: vote-service
-spec:
-  type: LoadBalancer  # Change to NodePort if running locally without cloud provider
-  selector:
-    app: vote
-  ports:
-    - port: 80
-      targetPort: 80
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: result-service
-spec:
-  type: LoadBalancer  # Change to NodePort if running locally without cloud provider
-  selector:
-    app: result
-  ports:
-    - port: 80
-      targetPort: 80
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: worker-service
-spec:
-  selector:
-    app: worker
-  ports:
-    - port: 5000
-      targetPort: 5000
+      - name: worker
+        image: sujalkamanna/worker:latest
+        env:
+        - name: REDIS_HOST
+          value: redis
+        - name: POSTGRES_HOST
+          value: db
