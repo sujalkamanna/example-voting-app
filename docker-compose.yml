@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  # Redis queue service
+  redis:
+    image: redis:latest
+    container_name: voting_redis
+    networks:
+      - voting-app-network
+
+  # PostgreSQL database for persistent storage
+  db:
+    image: postgres:9.4
+    container_name: voting_db
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    networks:
+      - voting-app-network
+
+  # Frontend voting UI
+  vote:
+    image: sujalkamanna/vote-ui:latest
+    container_name: voting_vote
+    depends_on:
+      - redis
+      - db
+    ports:
+      - "5000:80"
+    networks:
+      - voting-app-network
+
+  # Worker service that processes votes
+  worker:
+    image: sujalkamanna/worker:latest
+    container_name: voting_worker
+    depends_on:
+      - redis
+      - db
+    networks:
+      - voting-app-network
+
+  # Results UI
+  result:
+    image: sujalkamanna/result-ui:latest
+    container_name: voting_result
+    depends_on:
+      - db
+    ports:
+      - "5001:80"
+    networks:
+      - voting-app-network
+
+networks:
+  voting-app-network:
+    driver: bridge
